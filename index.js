@@ -1,24 +1,42 @@
-const express = require('express');
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+// Middlewares
+app.use(cors());
+app.use(bodyParser.json());
 
-// Rota padrão para testar o webhook
-app.post('/webhook', (req, res) => {
-  console.log('📩 Webhook recebido:', req.body);
-
-  // Resposta de teste
-  const respostaTeste = {
-    status: 'ok',
-    mensagem: 'Webhook ativo com sucesso!',
-    data_exemplo: '2025-04-01',
-    valor_simulado: 12345
-  };
-
-  res.status(200).json(respostaTeste);
+// Teste de rota GET (opcional)
+app.get("/", (req, res) => {
+  res.send("Webhook da Kommo está funcionando! 🚀");
 });
 
+// Rota principal do webhook
+app.post("/webhook", (req, res) => {
+  const nome = req.body.nome || "Cliente";
+  const limite = parseFloat(req.body.limite || 0);
+
+  if (!limite || isNaN(limite)) {
+    return res.json({
+      mensagem: `Olá ${nome}, não consegui entender o valor do seu limite. 😔`
+    });
+  }
+
+  const valorSaque = (limite / 1.56).toFixed(2); // Exemplo com taxa de 56%
+  const valorParcela = (valorSaque / 12).toFixed(2); // 12x como exemplo
+
+  res.json({
+    mensagem: `💳 Limite disponível: R$ ${limite.toLocaleString("pt-BR")}
+📆 12x de R$ ${valorParcela} = R$ ${valorSaque} de saque aproximado.
+
+Esta é a melhor opção em custo-benefício, ${nome}. Vamos avançar?`
+  });
+});
+
+// Inicialização do servidor
 app.listen(PORT, () => {
-  console.log(`🚀 Webhook rodando em http://localhost:${PORT}/webhook`);
+  console.log(`🔥 Servidor rodando na porta ${PORT}`);
 });
