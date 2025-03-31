@@ -1,12 +1,10 @@
 const express = require("express");
-const cors = require("cors");
 const bodyParser = require("body-parser");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middlewares
-app.use(cors());
 app.use(bodyParser.json());
 
 // Teste de rota GET (opcional)
@@ -21,7 +19,10 @@ app.post("/webhook", (req, res) => {
 
   if (!limite || isNaN(limite)) {
     return res.json({
-      mensagem: `Olá ${nome}, não consegui entender o valor do seu limite. 😔`
+      show: {
+        type: "text",
+        value: `Olá ${nome}, não consegui entender o valor do seu limite. 😔`
+      }
     });
   }
 
@@ -32,9 +33,9 @@ app.post("/webhook", (req, res) => {
     show: {
       type: "text",
       value: `💳 Limite disponível: R$ ${limite.toLocaleString("pt-BR")}
-  📆 12x de R$ ${valorParcela} = R$ ${valorSaque} de saque aproximado.
-  
-  Esta é a melhor opção em custo-benefício, ${nome}. Vamos avançar?`
+📆 12x de R$ ${valorParcela} = R$ ${valorSaque} de saque aproximado.
+
+Esta é a melhor opção em custo-benefício, ${nome}. Vamos avançar?`
     }
   });
 });
