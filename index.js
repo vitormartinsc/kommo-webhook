@@ -1,24 +1,24 @@
-import express from 'express';
+const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-app.post("/webhook", (req, res) => {
-  console.log("📨 Webhook recebido:", req.body);
+// Rota padrão para testar o webhook
+app.post('/webhook', (req, res) => {
+  console.log('📩 Webhook recebido:', req.body);
 
-  // Exemplo de processamento
-  const data = req.body;
+  // Resposta de teste
+  const respostaTeste = {
+    status: 'ok',
+    mensagem: 'Webhook ativo com sucesso!',
+    data_exemplo: '2025-04-01',
+    valor_simulado: 12345
+  };
 
-  // Aqui você pode aplicar lógica como calcular valor com base em limite + parcelas
-  // ou simplesmente retornar uma confirmação
-  res.json({ status: "ok", mensagem: "Webhook processado com sucesso!", recebido: data });
-});
-
-app.get("/", (req, res) => {
-  res.send("Webhook ativo! 🚀");
+  res.status(200).json(respostaTeste);
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor rodando em http://localhost:${PORT}`);
+  console.log(`🚀 Webhook rodando em http://localhost:${PORT}/webhook`);
 });
