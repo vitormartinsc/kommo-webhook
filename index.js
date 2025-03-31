@@ -29,10 +29,13 @@ app.post("/webhook", (req, res) => {
   const valorParcela = (valorSaque / 12).toFixed(2); // 12x como exemplo
 
   res.json({
-    mensagem: `💳 Limite disponível: R$ ${limite.toLocaleString("pt-BR")}
-📆 12x de R$ ${valorParcela} = R$ ${valorSaque} de saque aproximado.
-
-Esta é a melhor opção em custo-benefício, ${nome}. Vamos avançar?`
+    show: {
+      type: "text",
+      value: `💳 Limite disponível: R$ ${limite.toLocaleString("pt-BR")}
+  📆 12x de R$ ${valorParcela} = R$ ${valorSaque} de saque aproximado.
+  
+  Esta é a melhor opção em custo-benefício, ${nome}. Vamos avançar?`
+    }
   });
 });
 
