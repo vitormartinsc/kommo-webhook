@@ -36,6 +36,7 @@ const calcularParcelamentos = (limite) => {
 // Webhook principal
 app.post("/webhook", async (req, res) => {
   const { lead_id, nome, valor_simulacao } = req.body;
+  console.log("🔎 Dados recebidos:", req.body); // 👈 Adiciona isso
   const token = process.env.KOMMO_TOKEN;
 
   const limite = parseFloat(valor_simulacao);
@@ -55,7 +56,7 @@ app.post("/webhook", async (req, res) => {
         },
         {
           field_id: 1051268, // Valor Simulação (caso queira registrar também)
-          values: [{ value: limite }]
+          values: [{ value: limite.toString() }]
         }
       ],
       status_id: 83236763 // Novo estágio do funil Simulação
