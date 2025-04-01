@@ -28,16 +28,20 @@ const calcularParcelamentos = (limite) => {
     const valorSaque = limite / (1 + taxa);
     const parcela = valorSaque / i;
 
-    resultado.push(`${i}x de R$ ${parcela.toFixed(2).replace('.', ',')} - Saque total: R$ ${valorSaque.toFixed(2).replace('.', ',')}`);
+    resultado.push({
+      texto: `${i}x de R$ ${parcela.toFixed(2).replace('.', ',')} - Saque total: R$ ${valorSaque.toFixed(2).replace('.', ',')}`,
+      parcelas: parcela,
+      saque: valorSaque,
+      qtdParcelas: i
+    });
   }
 
-  return resultado.join("\n");
+  return resultado;
 };
 
 // Webhook disparado por mudança de etapa no pipeline
 app.post("/webhook", async (req, res) => {
-  console.log(req.body)
-  const leadId = req.body["leads[add][0][id]"] || req.body["leads[status][0][id]"];
+  const leadId = req.body.leads?.add?.[0]?.id || req.body.leads?.status?.[0]?.id;
   console.log("🔔 Webhook recebido para lead:", leadId);
 
   const token = process.env.KOMMO_TOKEN;
@@ -64,7 +68,10 @@ app.post("/webhook", async (req, res) => {
       return res.status(400).json({ erro: "Valor de simulação inválido" });
     }
 
-    const resultadosTexto = calcularParcelamentos(limite);
+    const resultados = calcularParcelamentos(limite);
+    const resultadosTexto = resultados.map(r => r.texto).join("\n");
+
+    const sugestao12x = resultados.find(r => r.qtdParcelas === 12)?.texto || "";
 
     // Atualiza o lead com resultados e muda de estágio
     await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
@@ -74,8 +81,12 @@ app.post("/webhook", async (req, res) => {
           values: [{ value: resultadosTexto }]
         },
         {
-          field_id: 1051036, // Valor Simulação (para persistência também)
+          field_id: 1051268, // Valor Simulação (para persistência também)
           values: [{ value: limite.toString() }]
+        },
+        {
+          field_id: 1051314, // Resultado Simulação Sugerido
+          values: [{ value: sugestao12x }]
         }
       ],
       status_id: 83236763 // Move para o estágio de Simulação
