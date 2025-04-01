@@ -29,7 +29,7 @@ const calcularParcelamentos = (limite) => {
     const parcela = valorSaque / i;
 
     resultado.push({
-      texto: `${i}x de R$ ${parcela.toFixed(2).replace('.', ',')} - Saque total: R$ ${valorSaque.toFixed(2).replace('.', ',')}`,
+      texto: `*${i}x* de *R$ ${parcela.toFixed(2).replace('.', ',')}* - Saque total: *R$ ${valorSaque.toFixed(2).replace('.', ',')}*`,
       parcelas: parcela,
       saque: valorSaque,
       qtdParcelas: i
