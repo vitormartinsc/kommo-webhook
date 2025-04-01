@@ -36,7 +36,8 @@ const calcularParcelamentos = (limite) => {
 
 // Webhook disparado por mudança de etapa no pipeline
 app.post("/webhook", async (req, res) => {
-  const leadId = req.body["leads[status][0][id]"];
+  console.log(req.body)
+  const leadId = req.body["leads[add][0][id]"] || req.body["leads[status][0][id]"];
   console.log("🔔 Webhook recebido para lead:", leadId);
 
   const token = process.env.KOMMO_TOKEN;
