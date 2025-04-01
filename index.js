@@ -33,46 +33,58 @@ const calcularParcelamentos = (limite) => {
   return resultado.join("\n");
 };
 
-// Webhook principal
 app.post("/webhook", async (req, res) => {
-  const { lead_id, nome, valor_simulacao } = req.body;
-  console.log("🔎 Dados recebidos:", req.body); // 👈 Adiciona isso
-  const token = process.env.KOMMO_TOKEN;
+  const { data, token, return_url } = req.body;
+
+  if (!data) {
+    return res.status(400).json({ erro: "Dados ausentes no corpo da requisição" });
+  }
+
+  const { lead_id, nome, valor_simulacao } = data;
+
+  console.log("🔎 Dados recebidos do Kommo:", data);
+
+  // ✅ Responde rapidamente para o Kommo continuar o fluxo
+  res.status(200).json({ status: "ok", recebido: data });
+
+  // 🔄 Opcional: faz lógica depois (como atualizar campos ou continuar bot)
 
   const limite = parseFloat(valor_simulacao);
-  if (!lead_id || isNaN(limite)) {
-    return res.status(400).json({ erro: "Dados inválidos" });
-  }
+  if (!lead_id || isNaN(limite)) return;
 
   const resultadosTexto = calcularParcelamentos(limite);
 
   try {
-    // Atualiza campos personalizados
     await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${lead_id}`, {
       custom_fields_values: [
         {
-          field_id: 1051168, // Resultado simulação
+          field_id: 1051168,
           values: [{ value: resultadosTexto }]
         },
         {
-          field_id: 1051268, // Valor Simulação (caso queira registrar também)
-          values: [{ value: limite.toString() }]
+          field_id: 1051036,
+          values: [{ value: limite }]
         }
       ],
-      status_id: 83236763 // Novo estágio do funil Simulação
+      status_id: 83236763
     }, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${process.env.KOMMO_TOKEN}`,
         "Content-Type": "application/json"
       }
     });
 
-    res.json({ status: "sucesso", resultados: resultadosTexto });
+    // (Opcional) Chamar return_url para retomar o bot
+    if (return_url) {
+      await axios.post(return_url, {});
+      console.log("✅ Bot continuado com sucesso via return_url");
+    }
+
   } catch (err) {
     console.error("Erro ao atualizar lead:", err.response?.data || err.message);
-    res.status(500).json({ erro: "Falha ao atualizar lead no Kommo" });
   }
 });
+
 
 // Rota de teste GET
 app.get("/", (req, res) => {
