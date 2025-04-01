@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const axios = require("axios");
-require("dotenv").config();
+require("dotenv\config");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Função para calcular saque e parcelas
 const calcularParcelamentos = (limite) => {
@@ -33,58 +34,64 @@ const calcularParcelamentos = (limite) => {
   return resultado.join("\n");
 };
 
+// Webhook disparado por mudança de etapa no pipeline
 app.post("/webhook", async (req, res) => {
-  const { data, token, return_url } = req.body;
+  const leadId = req.body["leads[status][0][id]"];
+  console.log("🔔 Webhook recebido para lead:", leadId);
 
-  if (!data) {
-    return res.status(400).json({ erro: "Dados ausentes no corpo da requisição" });
+  const token = process.env.KOMMO_TOKEN;
+
+  if (!leadId) {
+    console.error("❌ lead_id não encontrado no corpo da requisição");
+    return res.status(400).json({ erro: "lead_id ausente" });
   }
 
-  const { lead_id, nome, valor_simulacao } = data;
-
-  console.log("🔎 Dados recebidos do Kommo:", data);
-
-  // ✅ Responde rapidamente para o Kommo continuar o fluxo
-  res.status(200).json({ status: "ok", recebido: data });
-
-  // 🔄 Opcional: faz lógica depois (como atualizar campos ou continuar bot)
-
-  const limite = parseFloat(valor_simulacao);
-  if (!lead_id || isNaN(limite)) return;
-
-  const resultadosTexto = calcularParcelamentos(limite);
-
   try {
-    await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${lead_id}`, {
+    // Buscar dados do lead na API do Kommo
+    const response = await axios.get(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const leadData = response.data;
+    const campoLimite = leadData.custom_fields_values?.find(c => c.field_id === 1051268);
+    const limite = parseFloat(campoLimite?.values[0]?.value || 0);
+
+    if (!limite || isNaN(limite)) {
+      console.error("❌ Limite inválido ou ausente no lead");
+      return res.status(400).json({ erro: "Valor de simulação inválido" });
+    }
+
+    const resultadosTexto = calcularParcelamentos(limite);
+
+    // Atualiza o lead com resultados e muda de estágio
+    await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
       custom_fields_values: [
         {
-          field_id: 1051168,
+          field_id: 1051168, // Resultado simulação
           values: [{ value: resultadosTexto }]
         },
         {
-          field_id: 1051036,
-          values: [{ value: limite }]
+          field_id: 1051036, // Valor Simulação (para persistência também)
+          values: [{ value: limite.toString() }]
         }
       ],
-      status_id: 83236763
+      status_id: 83236763 // Move para o estágio de Simulação
     }, {
       headers: {
-        Authorization: `Bearer ${process.env.KOMMO_TOKEN}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json"
       }
     });
 
-    // (Opcional) Chamar return_url para retomar o bot
-    if (return_url) {
-      await axios.post(return_url, {});
-      console.log("✅ Bot continuado com sucesso via return_url");
-    }
-
+    console.log("✅ Lead atualizado com sucesso");
+    res.json({ status: "sucesso", resultados: resultadosTexto });
   } catch (err) {
-    console.error("Erro ao atualizar lead:", err.response?.data || err.message);
+    console.error("🔥 Erro ao processar webhook:", err.response?.data || err.message);
+    res.status(500).json({ erro: "Falha ao atualizar lead no Kommo" });
   }
 });
-
 
 // Rota de teste GET
 app.get("/", (req, res) => {
