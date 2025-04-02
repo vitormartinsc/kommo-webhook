@@ -26,7 +26,7 @@ const calcularParcelamentos = (limite) => {
   for (let i = 1; i <= 18; i++) {
     const taxa = taxas[i] / 100;
     const valorSaque = limite / (1 + taxa);
-    const parcela = valorSaque / i;
+    const parcela = limite / i;
 
     resultado.push({
       texto: `*${i}x* de *R$ ${parcela.toFixed(2).replace('.', ',')}* - Saque total: *R$ ${valorSaque.toFixed(2).replace('.', ',')}*`,
