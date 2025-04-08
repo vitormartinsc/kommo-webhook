@@ -6,6 +6,7 @@ require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+let ngrokUrl = process.env.NGROK_URL || ""; // fallback
 
 // Middleware
 app.use(cors());
