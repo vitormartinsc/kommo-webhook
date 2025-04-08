@@ -3,6 +3,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const axios = require("axios");
 require("dotenv").config();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -38,8 +39,6 @@ const calcularParcelamentos = (limite) => {
   return resultado;
 };
 
-let ngrokUrl = process.env.NGROK_URL || ""; // fallback
-
 // Webhook disparado por mudança de etapa no pipeline
 app.post("/webhook", async (req, res) => {
   const leadId = req.body.leads?.add?.[0]?.id || req.body.leads?.status?.[0]?.id;
@@ -62,39 +61,7 @@ app.post("/webhook", async (req, res) => {
 
     const leadData = response.data;
     const campoLimite = leadData.custom_fields_values?.find(c => c.field_id === 1051268);
-    const campoParcelas = leadData.custom_fields_values?.find(c => c.field_id === 1054600); // ✅ Adicione essa linha
-    
-    const valor = campoLimite?.values?.[0]?.value || "";
-    const parcelas = parseInt(campoParcelas?.values?.[0]?.value || 0);
-
-    try {
-      // 🔗 Chamada para o servidor Python via ngrok
-      const respostaLink = await axios.post(ngrokUrl, {
-        valor: valor.toString().replace(".", ","), // assegura o formato brasileiro
-        parcelas: parcelas
-      });
-    
-      const linkProposta = respostaLink.data.link;
-      console.log("🔗 Link recebido do servidor Python:", linkProposta);
-    
-      // Se quiser salvar esse link no Kommo (em algum campo específico):
-      await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
-        custom_fields_values: [
-          {
-            field_id: 1054606, // ← Altere para o ID real do campo "Link Gerado"
-            values: [{ value: linkProposta }]
-          }
-        ]
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        }
-      });
-    
-    } catch (err) {
-      console.error("❌ Erro ao gerar link com servidor Python:", err.response?.data || err.message);
-    }
+    const limite = parseFloat(campoLimite?.values[0]?.value || 0);
 
     if (!limite || isNaN(limite)) {
       console.error("❌ Limite inválido ou ausente no lead");
@@ -137,6 +104,62 @@ app.post("/webhook", async (req, res) => {
     res.status(500).json({ erro: "Falha ao atualizar lead no Kommo" });
   }
 });
+
+app.post("/gerar-link", async (req, res) => {
+  const leadId = req.body.leads?.add?.[0]?.id || req.body.leads?.status?.[0]?.id;
+  const token = process.env.KOMMO_TOKEN;
+
+  if (!leadId) {
+    return res.status(400).json({ erro: "lead_id ausente" });
+  }
+
+  try {
+    // Buscar lead
+    const response = await axios.get(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const leadData = response.data;
+    const campoLimite = leadData.custom_fields_values?.find(c => c.field_id === 1051268);
+    const campoParcelas = leadData.custom_fields_values?.find(c => c.field_id === 1054600);
+
+    const valor = campoLimite?.values?.[0]?.value || "";
+    const parcelas = parseInt(campoParcelas?.values?.[0]?.value || 0);
+
+    if (!valor || isNaN(parcelas) || parcelas < 1 || parcelas > 18) {
+      return res.status(400).json({ erro: "Campos inválidos para gerar link" });
+    }
+
+    const respostaLink = await axios.post(ngrokUrl, {
+      valor: valor.toString().replace(".", ","),
+      parcelas: parcelas
+    });
+
+    const linkProposta = respostaLink.data.link;
+
+    // Atualizar campo de link no Kommo
+    await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+      custom_fields_values: [
+        {
+          field_id: 1054606, // Link gerado
+          values: [{ value: linkProposta }]
+        }
+      ]
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    return res.json({ status: "ok", link: linkProposta });
+
+  } catch (err) {
+    console.error("❌ Erro em /gerar-link-kommo:", err.response?.data || err.message);
+    return res.status(500).json({ erro: "Erro ao gerar link" });
+  }
+});
+
 
 // Rota de teste GET
 app.get("/", (req, res) => {
