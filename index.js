@@ -3,7 +3,6 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const axios = require("axios");
 require("dotenv").config();
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -39,6 +38,8 @@ const calcularParcelamentos = (limite) => {
   return resultado;
 };
 
+let ngrokUrl = process.env.NGROK_URL || ""; // fallback
+
 // Webhook disparado por mudança de etapa no pipeline
 app.post("/webhook", async (req, res) => {
   const leadId = req.body.leads?.add?.[0]?.id || req.body.leads?.status?.[0]?.id;
@@ -61,7 +62,39 @@ app.post("/webhook", async (req, res) => {
 
     const leadData = response.data;
     const campoLimite = leadData.custom_fields_values?.find(c => c.field_id === 1051268);
-    const limite = parseFloat(campoLimite?.values[0]?.value || 0);
+    const campoParcelas = leadData.custom_fields_values?.find(c => c.field_id === 1054600); // ✅ Adicione essa linha
+    
+    const valor = campoLimite?.values?.[0]?.value || "";
+    const parcelas = parseInt(campoParcelas?.values?.[0]?.value || 0);
+
+    try {
+      // 🔗 Chamada para o servidor Python via ngrok
+      const respostaLink = await axios.post(ngrokUrl, {
+        valor: valor.toString().replace(".", ","), // assegura o formato brasileiro
+        parcelas: parcelas
+      });
+    
+      const linkProposta = respostaLink.data.link;
+      console.log("🔗 Link recebido do servidor Python:", linkProposta);
+    
+      // Se quiser salvar esse link no Kommo (em algum campo específico):
+      await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+        custom_fields_values: [
+          {
+            field_id: 1054606, // ← Altere para o ID real do campo "Link Gerado"
+            values: [{ value: linkProposta }]
+          }
+        ]
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+    
+    } catch (err) {
+      console.error("❌ Erro ao gerar link com servidor Python:", err.response?.data || err.message);
+    }
 
     if (!limite || isNaN(limite)) {
       console.error("❌ Limite inválido ou ausente no lead");
