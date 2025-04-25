@@ -200,7 +200,7 @@ app.post("/get_campaign", async (req, res) => {
         },
         {
           field_id: 1059546, // Atualizar o campo original com o código da campanha
-          values: [{ value: codigoCampanha }]
+          values: [{ value: `[${codigoCampanha}]` }]
         }
       ]
     }, {
