@@ -161,6 +161,59 @@ app.post("/gerar-link", async (req, res) => {
   }
 });
 
+app.post("/get_campaign", async (req, res) => {
+  const leadId = req.body.leads?.add?.[0]?.id || req.body.leads?.status?.[0]?.id;
+  const token = process.env.KOMMO_TOKEN;
+
+  if (!leadId) {
+    console.error("❌ lead_id não encontrado no corpo da requisição");
+    return res.status(400).json({ erro: "lead_id ausente" });
+  }
+
+  try {
+    // Buscar dados do lead na API do Kommo
+    const response = await axios.get(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const leadData = response.data;
+    const campoMensagem = leadData.custom_fields_values?.find(c => c.field_id === 1059546);
+    const mensagem = campoMensagem?.values?.[0]?.value || "";
+
+    // Extrair o valor dentro dos colchetes
+    const match = mensagem.match(/\[([^\]]+)\]/);
+    const codigoCampanha = match ? match[1] : null;
+
+    if (!codigoCampanha) {
+      console.error("❌ Código da campanha não encontrado na mensagem");
+      return res.status(400).json({ erro: "Código da campanha ausente ou inválido" });
+    }
+
+    // Atualizar o campo customizado com o código da campanha
+    await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+      custom_fields_values: [
+        {
+          field_id: 1057048, // Campo a ser atualizado
+          values: [{ value: codigoCampanha }]
+        }
+      ]
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    console.log("✅ Campo atualizado com o código da campanha:", codigoCampanha);
+    res.json({ status: "sucesso", codigoCampanha });
+
+  } catch (err) {
+    console.error("🔥 Erro ao processar /get_campaign:", err.response?.data || err.message);
+    res.status(500).json({ erro: "Falha ao processar campanha" });
+  }
+});
 
 // Rota de teste GET
 app.get("/", (req, res) => {
