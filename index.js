@@ -184,7 +184,7 @@ app.post("/get_campaign", async (req, res) => {
 
     // Extrair o valor dentro dos colchetes
     const match = mensagem.match(/\[([^\]]+)\]/);
-    const codigoCampanha = match ? match[1] : null;
+    const codigoCampanha = match ? match[1] : 'Google';
 
     if (!codigoCampanha) {
       console.error("❌ Código da campanha não encontrado na mensagem");
