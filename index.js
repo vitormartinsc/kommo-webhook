@@ -8,6 +8,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 let ngrokUrl = process.env.NGROK_URL || ""; // fallback
 
+const KOMMO_API_URL = "https://essencialsolutions.kommo.com/api/v4"; // URL base da API Kommo
+
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
@@ -54,7 +56,7 @@ app.post("/webhook", async (req, res) => {
 
   try {
     // Buscar dados do lead na API do Kommo
-    const response = await axios.get(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+    const response = await axios.get(`${KOMMO_API_URL}/leads/${leadId}`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -75,7 +77,7 @@ app.post("/webhook", async (req, res) => {
     const sugestao12x = resultados.find(r => r.qtdParcelas === 12)?.texto || "";
 
     // Atualiza o lead com resultados e muda de estágio
-    await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+    await axios.patch(`${KOMMO_API_URL}/leads/${leadId}`, {
       custom_fields_values: [
         {
           field_id: 1051168, // Resultado simulação
@@ -116,7 +118,7 @@ app.post("/gerar-link", async (req, res) => {
 
   try {
     // Buscar lead
-    const response = await axios.get(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+    const response = await axios.get(`${KOMMO_API_URL}/leads/${leadId}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
@@ -139,7 +141,7 @@ app.post("/gerar-link", async (req, res) => {
     const linkProposta = respostaLink.data.link;
 
     // Atualizar campo de link no Kommo
-    await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+    await axios.patch(`${KOMMO_API_URL}/leads/${leadId}`, {
       custom_fields_values: [
         {
           field_id: 1054606, // Link gerado
@@ -172,7 +174,7 @@ app.post("/get_campaign", async (req, res) => {
 
   try {
     // Buscar dados do lead na API do Kommo
-    const response = await axios.get(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+    const response = await axios.get(`${KOMMO_API_URL}/leads/${leadId}`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -192,7 +194,7 @@ app.post("/get_campaign", async (req, res) => {
     }
 
     // Atualizar o campo customizado com o código da campanha
-    await axios.patch(`https://vitorcarvalho.kommo.com/api/v4/leads/${leadId}`, {
+    await axios.patch(`${KOMMO_API_URL}/leads/${leadId}`, {
       custom_fields_values: [
         {
           field_id: 1057048, // Campo a ser atualizado
